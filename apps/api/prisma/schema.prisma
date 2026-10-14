@@ -1,0 +1,56 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Must match STATUSES in packages/shared/src/status.ts (enforced by src/schema.test.ts).
+enum TicketStatus {
+  received
+  diagnosing
+  waiting_on_parts
+  in_progress
+  ready_for_pickup
+  picked_up
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String // digits only, e.g. "6045551234"; lookup matches the last 4
+  createdAt DateTime @default(now())
+  tickets   Ticket[]
+}
+
+model Ticket {
+  id              String        @id @default(cuid())
+  number          String        @unique // public ticket number written on the bike tag
+  customerId      String
+  customer        Customer      @relation(fields: [customerId], references: [id])
+  bikeDescription String
+  problem         String
+  status          TicketStatus  @default(received)
+  promisedBy      DateTime      @db.Date // calendar date in the shop's time zone
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  events          TicketEvent[]
+
+  @@index([status, promisedBy])
+}
+
+model TicketEvent {
+  id         String        @id @default(cuid())
+  ticketId   String
+  ticket     Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  fromStatus TicketStatus? // null for the event that creates the ticket
+  toStatus   TicketStatus
+  note       String? // internal only; never returned by the customer lookup
+  createdAt  DateTime      @default(now())
+
+  @@index([ticketId, createdAt])
+}

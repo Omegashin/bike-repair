@@ -12,6 +12,10 @@
   "scripts": {
     "dev:web": "npm run dev -w apps/web",
     "dev:api": "npm run dev -w apps/api",
+    "db:up": "docker compose up -d --wait db",
+    "db:migrate": "npm run db:migrate -w apps/api --",
+    "db:seed": "npm run db:seed -w apps/api",
+    "db:studio": "npm run db:studio -w apps/api",
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "test": "vitest run",
@@ -30,7 +34,13 @@
     "typescript-eslint": "^8.71.2",
     "vitest": "^5.0.4"
   },
+  "overrides": {
+    "mysql2": "^3.24.6",
+    "deepmerge-ts": "^8.0.2"
+  },
   "allowScripts": {
+    "prisma": false,
+    "@prisma/engines": false,
     "fsevents": false
   }
 }

@@ -4,15 +4,23 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node --watch --env-file-if-exists=../../.env src/index.ts"
+    "dev": "node --watch --env-file-if-exists=../../.env src/index.ts",
+    "postinstall": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "node --env-file-if-exists=../../.env prisma/seed.ts",
+    "db:reset": "prisma migrate reset --force && npm run db:seed",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
     "@bike-repair/shared": "*",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
     "express": "^5.3.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/supertest": "^7.2.1",
+    "prisma": "^7.10.0",
     "supertest": "^7.3.1"
   }
 }

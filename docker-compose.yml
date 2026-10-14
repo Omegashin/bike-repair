@@ -1,0 +1,22 @@
+# Postgres for development and tests: docker compose up -d db (or npm run db:up)
+
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: bike
+      POSTGRES_PASSWORD: bike
+      POSTGRES_DB: bike_repair
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    volumes:
+      # Postgres 18 images keep data under /var/lib/postgresql/<major>/, so mount the parent.
+      - pgdata:/var/lib/postgresql
+      - ./docker/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bike -d bike_repair"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+volumes:
+  pgdata:
