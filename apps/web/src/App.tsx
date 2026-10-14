@@ -1,0 +1,8 @@
+// Placeholder until the queue (staff) and status lookup (customer) pages exist.
+export default function App() {
+  return (
+    <main className="mx-auto max-w-2xl p-6">
+      <h1 className="text-2xl font-semibold">Bike Repair Tracker</h1>
+    </main>
+  );
+}
