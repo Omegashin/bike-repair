@@ -11,6 +11,8 @@ const API_PORT = 3100;
 const WEB_PORT = 5199;
 const databaseUrl = process.env.E2E_DATABASE_URL;
 if (!databaseUrl) throw new Error("E2E_DATABASE_URL must be set (see .env.example)");
+// Fixed staff login so e2e doesn't depend on the developer's .env.
+export const E2E_STAFF_PASSWORD = "e2e-staff-password";
 
 export default defineConfig({
   testDir: ".",
@@ -30,7 +32,12 @@ export default defineConfig({
     {
       command: `npx prisma migrate deploy && node src/index.ts`,
       cwd: path.join(root, "apps/api"),
-      env: { DATABASE_URL: databaseUrl, PORT: String(API_PORT) },
+      env: {
+        DATABASE_URL: databaseUrl,
+        PORT: String(API_PORT),
+        STAFF_PASSWORD: E2E_STAFF_PASSWORD,
+        SESSION_SECRET: "e2e-session-secret-at-least-32-chars",
+      },
       url: `http://localhost:${API_PORT}/api/health`,
       reuseExistingServer: true,
       timeout: 60_000,

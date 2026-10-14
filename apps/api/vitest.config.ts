@@ -19,7 +19,12 @@ export default defineProject({
     name: "api",
     include: ["src/**/*.test.ts"],
     globalSetup: ["./test/global-setup.ts"],
-    env: { DATABASE_URL: testUrl },
+    // Fixed staff credentials so tests don't depend on the developer's .env.
+    env: {
+      DATABASE_URL: testUrl,
+      STAFF_PASSWORD: "test-staff-password",
+      SESSION_SECRET: "test-session-secret-at-least-32-chars",
+    },
     // Tests share one database, so run files one at a time.
     fileParallelism: false,
   },

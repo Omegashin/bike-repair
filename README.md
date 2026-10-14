@@ -15,6 +15,8 @@ Ports are configurable with `APP_PORT` and `DB_PORT` (defaults 8080 and 5433).
 
 ## Demo data
 
+Staff login: password `bikeshop` (set by `STAFF_PASSWORD`; see [.env.example](.env.example)).
+
 The seed ([seed.ts](apps/api/prisma/seed.ts)) creates 7 tickets covering every status, with promised-by dates relative to today so some are always overdue. Browse them with `npm run db:studio` (needs `npm run db:up`).
 
 ## Develop

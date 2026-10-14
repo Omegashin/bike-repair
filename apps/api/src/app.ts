@@ -1,5 +1,8 @@
 import express from "express";
 import path from "node:path";
+import { assertAuthConfig } from "./middleware/auth.ts";
+import { errorHandler } from "./middleware/errors.ts";
+import { sessionRouter } from "./routes/session.ts";
 
 type AppOptions = {
   // Built frontend (apps/web/dist). When set, Express serves it so the app runs from one URL.
@@ -7,12 +10,15 @@ type AppOptions = {
 };
 
 export function createApp({ webDir }: AppOptions = {}) {
+  assertAuthConfig();
   const app = express();
   app.use(express.json());
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true });
   });
+
+  app.use("/api/session", sessionRouter);
 
   // Unknown API routes get JSON, never the frontend's index.html.
   app.use("/api", (_req, res) => {
@@ -26,6 +32,8 @@ export function createApp({ webDir }: AppOptions = {}) {
       res.sendFile(path.join(webDir, "index.html"));
     });
   }
+
+  app.use(errorHandler);
 
   return app;
 }
