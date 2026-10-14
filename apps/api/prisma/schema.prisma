@@ -22,7 +22,7 @@ enum TicketStatus {
 model Customer {
   id        String   @id @default(cuid())
   name      String
-  phone     String // digits only, e.g. "6045551234"; lookup matches the last 4
+  phone     String   @unique // digits only, e.g. "6045551234"; lookup matches the last 4; a returning customer reuses their record
   createdAt DateTime @default(now())
   tickets   Ticket[]
 }
@@ -33,7 +33,7 @@ model Ticket {
   customerId      String
   customer        Customer      @relation(fields: [customerId], references: [id])
   bikeDescription String
-  problem         String
+  problem         String? // optional at intake
   status          TicketStatus  @default(received)
   promisedBy      DateTime      @db.Date // calendar date in the shop's time zone
   createdAt       DateTime      @default(now())

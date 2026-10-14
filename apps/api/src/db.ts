@@ -13,3 +13,8 @@ export function toDateString(date: Date): string {
 export function fromDateString(date: string): Date {
   return new Date(`${date}T00:00:00Z`);
 }
+
+// IANA zone that decides the shop's calendar date (overdue, promised-by checks).
+export function shopTimeZone(): string {
+  return process.env.SHOP_TIME_ZONE ?? "America/Vancouver";
+}
