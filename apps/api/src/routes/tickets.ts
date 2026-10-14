@@ -2,6 +2,7 @@ import {
   createIntakeSchema,
   generateTicketNumber,
   isOverdue,
+  nextStatuses,
   queueQuerySchema,
   shopToday,
 } from "@bike-repair/shared";
@@ -32,6 +33,19 @@ function toTicketJson(ticket: TicketWithCustomer) {
   };
 }
 
+// The detail view: the ticket with its full history, oldest first.
+const withHistory = {
+  customer: true,
+  events: { orderBy: { createdAt: "asc" } },
+} satisfies Prisma.TicketInclude;
+
+type TicketWithHistory = Prisma.TicketGetPayload<{ include: typeof withHistory }>;
+
+// Ticket numbers are stored uppercase; staff may type them from the tag in any case.
+function normalizeNumber(number: string): string {
+  return number.toUpperCase();
+}
+
 type RouterOptions = {
   // The shop's IANA time zone, read once at startup (see createApp).
   timeZone: string;
@@ -40,6 +54,21 @@ type RouterOptions = {
 // Staff endpoints. Mounted behind requireStaff in app.ts.
 export function createTicketsRouter({ timeZone }: RouterOptions) {
   const router = Router();
+
+  function toDetailJson(ticket: TicketWithHistory) {
+    const json = toTicketJson(ticket);
+    return {
+      ...json,
+      overdue: isOverdue(json, new Date(), timeZone),
+      nextStatuses: nextStatuses(ticket.status),
+      history: ticket.events.map((event) => ({
+        from: event.fromStatus,
+        to: event.toStatus,
+        note: event.note,
+        createdAt: event.createdAt,
+      })),
+    };
+  }
 
   // Queue: every ticket not yet picked up, due soonest first. No pagination: a small
   // shop has tens of open tickets. Only what the queue shows; no phone or notes.
@@ -99,6 +128,19 @@ export function createTicketsRouter({ timeZone }: RouterOptions) {
         throw err;
       }
     }
+  });
+
+  // Detail: everything staff need at the counter, including contact details and history.
+  router.get("/:number", async (req, res) => {
+    const ticket = await prisma.ticket.findUnique({
+      where: { number: normalizeNumber(req.params.number) },
+      include: withHistory,
+    });
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+    res.json(toDetailJson(ticket));
   });
 
   return router;

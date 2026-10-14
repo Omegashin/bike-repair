@@ -1,6 +1,8 @@
 import {
   generateTicketNumber,
+  nextStatuses,
   shopToday,
+  STATUSES,
   TICKET_NUMBER_PATTERN,
   type Status,
 } from "@bike-repair/shared";
@@ -266,5 +268,108 @@ describe("GET /api/tickets (queue)", () => {
     it("is overdue from 00:00 shop time the next day, unless ready for pickup", async () => {
       expect(await overdueAt("2026-10-14T07:00:00Z")).toEqual({ LATE22: true, DONE22: false });
     });
+  });
+});
+
+describe("GET /api/tickets/:number (detail)", () => {
+  let agent: Awaited<ReturnType<typeof staffAgent>>;
+
+  beforeEach(async () => {
+    await resetDb();
+    agent = await staffAgent(app);
+  });
+
+  it("returns 401 without a staff session", async () => {
+    await makeTicket({ number: "AAAA22", promisedBy: "2030-01-01" });
+    const res = await request(app).get("/api/tickets/AAAA22");
+    expect(res.status).toBe(401);
+  });
+
+  it("returns the ticket with customer contact, overdue and its next statuses", async () => {
+    await makeTicket({
+      number: "AAAA22",
+      status: "diagnosing",
+      promisedBy: "2020-01-01",
+      customerName: "Maya Chen",
+    });
+    const res = await agent.get("/api/tickets/AAAA22");
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      number: "AAAA22",
+      status: "diagnosing",
+      customer: { name: "Maya Chen", phone: expect.stringMatching(/^604555\d{4}$/) },
+      bikeDescription: "Bike AAAA22",
+      problem: "Secret internal problem",
+      promisedBy: "2020-01-01",
+      overdue: true,
+      nextStatuses: ["waiting_on_parts", "in_progress"],
+    });
+  });
+
+  it("offers exactly the shared rules' next statuses for every status", async () => {
+    for (const [i, status] of STATUSES.entries()) {
+      const number = `NEXT2${i + 2}`;
+      await makeTicket({ number, status, promisedBy: "2030-01-01" });
+      const res = await agent.get(`/api/tickets/${number}`);
+      expect(res.body.nextStatuses, status).toEqual([...nextStatuses(status)]);
+    }
+  });
+
+  it("returns the full history, oldest first", async () => {
+    const ticket = await makeTicket({
+      number: "AAAA22",
+      status: "in_progress",
+      promisedBy: "2030-01-01",
+    });
+    // Inserted out of order; the creation event from makeTicket is dated now, so move it first.
+    await prisma.ticketEvent.updateMany({
+      where: { ticketId: ticket.id },
+      data: { createdAt: new Date("2026-10-01T09:00:00Z") },
+    });
+    await prisma.ticketEvent.create({
+      data: {
+        ticketId: ticket.id,
+        fromStatus: "diagnosing",
+        toStatus: "in_progress",
+        note: "Parts in",
+        createdAt: new Date("2026-10-03T09:00:00Z"),
+      },
+    });
+    await prisma.ticketEvent.create({
+      data: {
+        ticketId: ticket.id,
+        fromStatus: "received",
+        toStatus: "diagnosing",
+        createdAt: new Date("2026-10-02T09:00:00Z"),
+      },
+    });
+
+    const res = await agent.get("/api/tickets/AAAA22");
+    expect(res.body.history).toEqual([
+      { from: null, to: "received", note: "Internal note", createdAt: "2026-10-01T09:00:00.000Z" },
+      { from: "received", to: "diagnosing", note: null, createdAt: "2026-10-02T09:00:00.000Z" },
+      {
+        from: "diagnosing",
+        to: "in_progress",
+        note: "Parts in",
+        createdAt: "2026-10-03T09:00:00.000Z",
+      },
+    ]);
+  });
+
+  it("finds the ticket whatever the case of the number typed", async () => {
+    await makeTicket({ number: "ABCD23", promisedBy: "2030-01-01" });
+    for (const typed of ["abcd23", "AbCd23"]) {
+      const res = await agent.get(`/api/tickets/${typed}`);
+      expect(res.status, typed).toBe(200);
+      expect(res.body.number).toBe("ABCD23");
+    }
+  });
+
+  it("returns 404 for an unknown ticket number", async () => {
+    await makeTicket({ number: "AAAA22", promisedBy: "2030-01-01" });
+    const res = await agent.get("/api/tickets/ZZZZ99");
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: "Ticket not found" });
   });
 });
