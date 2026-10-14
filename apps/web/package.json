@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build"
   },
   "dependencies": {
+    "@bike-repair/shared": "*",
     "@tailwindcss/vite": "^4.3.3",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
