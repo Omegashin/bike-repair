@@ -75,9 +75,10 @@ Version 1 is a repair ticket tracker with four features.
 
 ## User experience
 
-- **Staff:** the queue is the landing page, since "what's due next?" is the most frequent question. Overdue tickets are highlighted, buttons are sized for touch, and each ticket shows only the statuses it can move to, so invalid jumps aren't offered.
-- **Intake:** only the fields needed to find and contact the customer are required; validation errors appear next to the field.
-- **Customers:** a single mobile-first page with one form. Statuses are shown in plain language.
+- **Staff:** the queue is the landing page, since "what's due next?" is the most frequent question. Overdue tickets are highlighted with an "Overdue" tag (not colour alone), buttons are sized for touch, and each ticket shows only the statuses it can move to, so invalid jumps aren't offered. If two people change the same ticket at once, the second sees a message and the ticket reloads with its current status.
+- **Intake:** only the fields needed to find and contact the customer are required; validation errors appear next to the field. The new ticket number is shown large, ready to copy onto the bike tag.
+- **Customers:** a single mobile-first page with one form, and no links into the staff side. Statuses are shown in plain language, with "ready to pick up" made prominent. Any mismatch shows the same not-found message.
+- **Dates:** promised-by dates and history times follow the shop's time zone, never the browser's, so a tablet or phone set to another zone still shows the right day.
 
 ## Technical choices
 

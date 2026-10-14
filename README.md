@@ -15,11 +15,24 @@ Ports are configurable with `APP_PORT` and `DB_PORT` (defaults 8080 and 5433).
 
 ## Demo data
 
-Staff login: password `bikeshop` (set by `STAFF_PASSWORD`; see [.env.example](.env.example)).
+The seed ([seed.ts](apps/api/prisma/seed.ts)) creates 7 tickets covering every status, with promised-by dates relative to today so some are always overdue. Browse the raw data with `npm run db:studio` (needs `npm run db:up`).
 
-The seed ([seed.ts](apps/api/prisma/seed.ts)) creates 7 tickets covering every status, with promised-by dates relative to today so some are always overdue. Browse them with `npm run db:studio` (needs `npm run db:up`).
+**Staff** (http://localhost:8080/login, or http://localhost:5173/login in development): password `bikeshop` (set by `STAFF_PASSWORD`; see [.env.example](.env.example)).
 
-Customer lookup: ticket `K7P2QX` with phone digits `0142` (Maya Chen's bike, status Received).
+- **Queue** (`/`): open tickets, soonest first, with three overdue; filter by status.
+- **New ticket** (`/tickets/new`): create a ticket and get its number for the bike tag.
+- **Ticket** (click any queue row, e.g. `/tickets/K7P2QX`): details, history, and buttons to move it to its next status with an optional note.
+
+**Customer** (`/status`, no login; try it on a phone or a narrow window):
+
+| Ticket   | Last 4 phone digits | Shows                                    |
+| -------- | ------------------- | ---------------------------------------- |
+| `P8F4ZM` | `0111`              | Ready for pickup (the highlighted state) |
+| `K7P2QX` | `0142`              | Received                                 |
+| `H2W8NB` | `0123`              | Waiting on parts                         |
+| `K7P2QX` | `9999`              | The not-found message (wrong digits)     |
+
+The lookup allows 10 tries per 15 minutes from one IP address; after that it asks you to wait.
 
 ## Develop
 
