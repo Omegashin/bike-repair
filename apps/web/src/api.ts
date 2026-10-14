@@ -1,4 +1,5 @@
 // The only place the web app calls fetch. One typed function per endpoint.
+import type { Status } from "@bike-repair/shared";
 
 // One message per field, ready to show next to the input.
 export type FieldErrors = Record<string, string>;
@@ -87,4 +88,21 @@ export function logOut(): Promise<void> {
 
 export function getSession(): Promise<{ ok: true }> {
   return request("/session", { staff: true });
+}
+
+// Tickets (staff)
+
+export type QueueTicket = {
+  number: string;
+  customerName: string;
+  bikeDescription: string;
+  status: Status;
+  // YYYY-MM-DD calendar date; format with formatCalendarDate.
+  promisedBy: string;
+  overdue: boolean;
+};
+
+export function getQueue(status?: Status): Promise<QueueTicket[]> {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  return request(`/tickets${query}`, { staff: true });
 }
