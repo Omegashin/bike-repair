@@ -1,8 +1,8 @@
 # Bike Shop Repair Tracker — Decision Document
 
-Oct 13, 2026 · Arshdeep Saini · **Time spent:** ~[TODO] hours
+Oct 13, 2026 · Arshdeep Saini · **Time spent:** ~6 hours
 
-A repair ticket tracker. Staff log a bike at drop-off and move it through a fixed set of statuses; customers check progress with their ticket number and phone digits. I chose it because repairs are where the shop earns its margin, and today they're tracked on paper.
+A repair ticket tracker. Staff log a bike at drop-off and move it through a fixed set of statuses; customers check progress with their ticket number and phone digits.
 
 ## Assumptions
 
@@ -11,20 +11,17 @@ The owner wasn't available, so the app rests on these assumptions.
 - **Shop:** one independent location, 2–5 staff, 1–3 mechanics. Repairs drive margin and peak in spring.
 - **Today:** repair jobs are tracked on paper tags, a whiteboard, or memory.
 - **Existing tools:** a POS handles payments and retail inventory, but not repair tracking. This app doesn't replace the POS.
-- **Staff:** work from a shared counter desktop or workshop tablet, often mid-job. They need speed over features, and one shared login is enough.
-- **Customers:** non-technical, on their phones, and won't create an account. They mainly want to know when the bike is ready.
-- **Owner:** wants fewer lost jobs and fewer status calls.
 - **Data:** tens of open tickets and up to a few thousand a year, so one relational database is plenty. The phone number taken at drop-off can verify a status lookup.
 
-**Riskiest assumption:** that the POS doesn't track repairs. Some bike-shop POS systems include work orders. If this shop's does, the ticket system is redundant, and the value shifts to the customer status page and notifications built on the POS's data. This is the first thing I'd confirm with the owner.
+**Riskiest assumption:** that the POS doesn't track repairs. Some bike-shop POS systems include work orders. If this shop's does, the ticket system is redundant and the value shifts to the customer status page and notifications built on the POS's data. This is the first thing I'd confirm with the owner.
 
 ## Users and problems
 
-| User                        | Context                              | Problems today                                                                     |
-| --------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------- |
-| Mechanics and counter staff | Shared desktop or tablet, hands busy | Lost or forgotten bikes; no view of what's due next; phone calls interrupt repairs |
-| Customers                   | Phone, no account                    | No way to know when the bike is ready except calling                               |
-| Owner                       | Also often working the counter       | No view of overdue or stalled jobs; lost jobs cost money and reputation            |
+| User                        | Context and needs                                                       | Problems today                                                                     |
+| --------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Mechanics and counter staff | Shared desktop or tablet, often mid-job; speed over features            | Lost or forgotten bikes; no view of what's due next; phone calls interrupt repairs |
+| Customers                   | Non-technical, on a phone, won't make an account; want to know "ready?" | No way to know when the bike is ready except calling                               |
+| Owner                       | Often working the counter too; wants fewer lost jobs and status calls   | No view of overdue or stalled jobs; lost jobs cost money and reputation            |
 
 ## Problem selection
 
@@ -32,25 +29,21 @@ The owner wasn't available, so the app rests on these assumptions.
 
 | Candidate                  | Who feels it            | Decision                                                             |
 | -------------------------- | ----------------------- | -------------------------------------------------------------------- |
-| Repair tracking and status | Staff, customers, owner | **Build:** daily pain for all three users, core to margin            |
+| Repair tracking and status | Staff, customers, owner | **Build**                                                            |
 | Online booking             | Customers, staff        | Later: large scope, and work should be tracked before more is booked |
 | Inventory and online sales | Owner, staff            | Skip: the POS covers it                                              |
 | Staff scheduling           | Owner                   | Skip: low pain for 2–5 staff                                         |
 
-**Why this first:**
-
-- Service is where the shop earns its margin, so lost time costs money.
-- It's the only candidate all three user groups feel.
-- It's the base for later features: notifications, service history, tune-up reminders and booking.
+**Why this first:** service is where the shop earns its margin, so lost time costs money; it's the only problem all three user groups feel daily; and it's the base for later features (notifications, service history, booking).
 
 ## Scope
 
-Version 1 is a repair ticket tracker with four features.
+Version 1 has four features.
 
-1. **Intake:** staff create a ticket with customer name, phone, bike description, problem and promised-by date, and get a short ticket number to write on the bike tag: 6 random characters from uppercase letters and digits, leaving out look-alikes (0/O, 1/I/L) so handwritten tags read back correctly. Random rather than sequential, so numbers don't reveal neighbouring tickets; a rare collision is retried. Name, phone, bike and promised-by date (today or later, in the shop's time zone) are required; the problem is optional. Phones are stored as digits only (10–15), and a returning customer's phone reuses their existing record.
-2. **Queue:** all tickets not yet picked up, filterable by status and sorted by promised-by date. A ticket is **overdue** when its promised-by date has passed and it isn't Ready for pickup or Picked up.
-3. **Status updates:** staff move a ticket to its next status with an optional internal note. Every change is stored as an event, giving the ticket a full history.
-4. **Customer lookup:** ticket number (any case) plus the last 4 digits of the phone shows the current status and promised-by date, including after pickup. No login, and internal notes, customer details and history are never shown. The form posts its fields rather than putting them in the URL, so phone digits stay out of browser history and server logs.
+1. **Intake:** staff enter customer name, phone, bike, an optional problem and a promised-by date (today or later, in the shop's time zone), and get a ticket number for the bike tag. Numbers are 6 random characters without look-alikes (0/O, 1/I/L), so handwritten tags read back correctly and numbers don't reveal neighbouring tickets. Phones are stored as digits only; a returning customer's phone reuses their record.
+2. **Queue:** all tickets not yet picked up, sorted by promised-by date and filterable by status. A ticket is **overdue** when its promised-by day has ended and it isn't Ready for pickup or Picked up.
+3. **Status updates:** staff move a ticket to an allowed next status with an optional internal note. Every change is stored as an event, giving each ticket a full history.
+4. **Customer lookup:** ticket number plus the last 4 phone digits shows the current status and promised-by date. No login; notes, customer details and history are never shown. The form posts its fields, so phone digits stay out of URLs, browser history and logs.
 
 **Status rules** (shared by the API and UI; the API rejects anything else):
 
@@ -65,24 +58,24 @@ Version 1 is a repair ticket tracker with four features.
 
 **Not built:**
 
-| Left out                        | Why                                        |
-| ------------------------------- | ------------------------------------------ |
-| Payments and inventory          | The POS handles them                       |
-| Online booking                  | Track existing work before scheduling more |
-| SMS and email notifications     | Needs a paid provider; first next step     |
-| Per-user staff accounts         | A shared login suits a small shop for now  |
-| Bike records and cost approvals | Natural next steps once tickets work       |
+| Left out                        | Why                                                                |
+| ------------------------------- | ------------------------------------------------------------------ |
+| Payments and inventory          | The POS handles them                                               |
+| Online booking                  | Track existing work before scheduling more                         |
+| SMS and email notifications     | Needs a paid provider; first next step                             |
+| Per-user staff accounts         | A shared login suits a small shop, but changes aren't attributed   |
+| Bike records and cost approvals | Bike is free text, so visits aren't linked; next once tickets work |
 
 ## User experience
 
-- **Staff:** the queue is the landing page, since "what's due next?" is the most frequent question. Overdue tickets are highlighted with an "Overdue" tag (not colour alone), buttons are sized for touch, and each ticket shows only the statuses it can move to, so invalid jumps aren't offered. If two people change the same ticket at once, the second sees a message and the ticket reloads with its current status.
-- **Intake:** only the fields needed to find and contact the customer are required; validation errors appear next to the field. The new ticket number is shown large, ready to copy onto the bike tag.
-- **Customers:** a single mobile-first page with one form, and no links into the staff side. Statuses are shown in plain language, with "ready to pick up" made prominent. Any mismatch shows the same not-found message.
-- **Dates:** promised-by dates and history times follow the shop's time zone, never the browser's, so a tablet or phone set to another zone still shows the right day.
+- **Staff:** the queue is the landing page, since "what's due next?" is the most frequent question. Overdue tickets carry an "Overdue" tag (not colour alone), buttons are touch-sized, and a ticket offers only the statuses it can move to. If two people change a ticket at once, the second is told and sees the current status.
+- **Intake:** only the fields needed to find and contact the customer are required, with errors next to each field. The new ticket number is shown large, ready to copy onto the tag.
+- **Customers:** one mobile-first page with one form and no links into the staff side, in plain language, with "ready to pick up" made prominent.
+- **Dates** follow the shop's time zone, never the device's, so a tablet or phone set to another zone still shows the right day.
 
 ## Technical choices
 
-A TypeScript monorepo (npm workspaces): a React frontend, a REST API, and PostgreSQL, run locally with one Docker Compose command.
+A TypeScript monorepo (npm workspaces): React frontend, REST API and PostgreSQL, run locally with one Docker Compose command. I chose a stack I can build in quickly and that a future developer at a small shop could pick up easily.
 
 | Layer              | Choice                                                      | Why                                                                                           |
 | ------------------ | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
@@ -92,65 +85,60 @@ A TypeScript monorepo (npm workspaces): a React frontend, a REST API, and Postgr
 | Database           | PostgreSQL + Prisma                                         | Customers, tickets and history are relational; Prisma gives typed queries and migrations      |
 | Tests              | Vitest + Supertest, Playwright                              | Fast unit tests for rules; real HTTP requests for the API; one browser test of the core path  |
 | Local dev          | Docker Compose                                              | One command runs Postgres and the app exactly as in production, with seed data                |
-| Hosting (optional) | Render web service + Neon Postgres                          | Free tiers; one service serves both API and frontend                                          |
+| Hosting (optional) | **[WIP]** Render web service + Neon Postgres                | Free tiers; one service serves both API and frontend                                          |
 
-I chose a stack I can build in quickly and that a future developer at a small shop could pick up easily.
+**Architecture:** the browser calls the REST API, which validates every request with Zod, applies the status rules, and uses PostgreSQL through Prisma. Staff endpoints require the shared staff login. The public lookup endpoint is limited to 10 attempts per client IP per 15 minutes. In production, Express serves both `/api` and the built React app from one URL, so there's one deploy and no CORS setup.
 
-**Architecture:** the browser calls the REST API, which validates every request with Zod, applies the status rules, and reads and writes PostgreSQL through Prisma. Staff endpoints (create, list, view with history, change status) require the shared staff login. The customer lookup is a separate public endpoint, limited to 10 attempts per client IP per 15 minutes, that returns only status and promised-by date.
+**Data model:** `Customer` (name, unique digits-only phone) → `Ticket` (public number, bike, optional problem, status, promised-by date) → `TicketEvent` (from and to status, note, timestamp). A status change updates the ticket and writes its event in one transaction, so history can't drift from the current status.
 
-**Data model:**
+**Error contract:**
 
-- `Customer`: name, phone (unique, digits only).
-- `Ticket`: public ticket number, customer, bike description, problem (optional), status, promised-by date.
-- `TicketEvent`: ticket, from status, to status, note, timestamp.
+- `400` with field-level errors from the same Zod schemas the UI uses.
+- `409` for a disallowed status change, with the allowed next statuses.
+- `401` for staff endpoints without a valid session.
+- `404` with the same body for a wrong ticket number or wrong phone digits, so lookups don't reveal which tickets exist.
 
-A status change updates the ticket and writes its event in one transaction, so the history can't drift from the current status.
-
-**Error handling and validation:**
-
-- Invalid input returns `400` with field-level errors from the same Zod schemas the UI uses.
-- A disallowed status change returns `409` with the allowed next statuses.
-- Staff endpoints return `401` without a valid session.
-- A lookup with a wrong ticket number or wrong phone digits returns the same `404`, so responses don't reveal which tickets exist.
-
-**Deployment:** in production, Express serves both `/api` and the built React files from one URL, so there's one deploy and no CORS setup. Render runs `prisma migrate deploy` on each build; the environment-specific settings are the database URL, the shop's time zone, the staff password and session secret, and `TRUST_PROXY=1` so the lookup's rate limit sees each client's IP behind Render's proxy.
+**Deployment [WIP: hosting not yet set up]:** Render runs `prisma migrate deploy` on each build; the environment-specific settings are the database URL, the shop's time zone, the staff password and session secret, and `TRUST_PROXY=1` so the lookup's rate limit sees each client's IP behind Render's proxy.
 
 ## Testing approach
 
 Tests target the places where a bug would cost the shop most:
 
-- **Status and overdue rules (unit):** every allowed and disallowed transition, and the overdue cutoff at midnight in the shop's time zone. These are the core business rules and cheap to test exhaustively.
-- **API (integration, Supertest against a test Postgres):** intake validation, status change writes an event, invalid transitions return `409`, lookup hits and misses, and staff endpoints reject unauthenticated requests.
-- **End to end (Playwright, desktop and mobile):** one test of intake → ready for pickup → customer lookup, the path the whole app exists for. The rest of the UI is a thin layer over the tested API and shared rules, so it has no further UI tests.
-
-Run with `npm run check` (typecheck, lint, formatting, unit and API tests; needs Postgres from `npm run db:up`) and `npm run test:e2e`.
+- **Status and overdue rules (unit):** every allowed and disallowed transition, and the overdue cutoff at midnight in the shop's time zone. The core rules, and cheap to test exhaustively.
+- **API (integration, Supertest against a test Postgres):** intake validation, status changes writing events, `409` on invalid or simultaneous changes, lookup hits and misses, and `401` without a session.
+- **End to end (Playwright, desktop and mobile):** one test of intake → ready for pickup → customer lookup, the path the app exists for. The rest of the UI is a thin layer over the tested API and rules, so it has no further UI tests.
 
 ## Trade-offs and limitations
 
-These shortcuts keep the first version small; each is a known gap.
-
-- **Shared staff login:** status changes aren't attributed to a person.
-- **Weak customer verification:** ticket number plus last 4 phone digits stops casual guessing but isn't strong authentication. It's acceptable because the lookup returns only status and a date.
-- **No cancelled status:** a customer who declines the repair has to be moved through to Picked up with a note.
-- **No notifications:** customers still have to check the page.
-- **Bike stored as text:** service history across visits isn't linked.
+- **Weak customer verification:** ticket number plus last 4 phone digits stops casual guessing but isn't strong authentication. Acceptable because the lookup returns only status and a date.
+- **No cancelled status:** a declined repair has to be moved through to Picked up with a note.
 - **Single shop, single time zone:** overdue logic assumes one location.
-- **Customer data retention:** names and phone numbers are kept indefinitely, with no deletion flow.
-- **Free-tier hosting:** Render's free instance sleeps after 15 minutes idle, so the first request can take about a minute.
+- **Customer data retention:** names and phones are kept indefinitely, with no deletion flow.
+- **Free-tier hosting [WIP]:** Render's free instance sleeps after 15 minutes idle, so the first request can take about a minute.
 
 ## Next steps
 
-In priority order, based on what removes the most phone calls and lost work:
+In priority order, by what removes the most phone calls and lost work:
 
 1. **Confirm assumptions with the owner**, starting with whether the POS already tracks repairs.
 2. **SMS or email when a bike is ready:** the biggest cut to status calls.
-3. **Cost estimates and customer approval:** the mechanic adds an estimate and the customer approves it from the status page, replacing mid-job calls. Adds a Declined/Cancelled status.
+3. **Cost estimates and customer approval** from the status page, replacing mid-job calls; adds a Declined status.
 4. **Per-user staff accounts:** attribute each change and give the owner a role.
 5. **Bike records and service history:** link visits to a bike.
 6. **Owner reporting:** turnaround time, overdue rate and seasonal volume.
-7. **Online booking:** once tracking works, let customers book drop-off slots.
+7. **Online booking** of drop-off slots, once tracking works.
 8. **Production hosting:** an always-on instance and error monitoring such as Sentry.
 
 ## How I used AI
 
-[TODO: be specific. For example: which tool, what it generated (scaffolding, Tailwind layouts, test cases), what you wrote or decided yourself (scope, data model, status rules), and one thing you corrected in its output.]
+I built this with Claude Code (Claude Opus 5.5) as a pair programmer; every commit is marked as co-authored with it.
+
+**What I decided:** the problem, users, assumptions, scope, status rules, data model and error contract. They're in this document, which I wrote before any code (it is the first commit).
+
+**How I kept the AI to my spec:**
+
+- **Rules as tests first.** The status table is written out independently in [status.test.ts](packages/shared/src/status.test.ts), and the agent implemented `status.ts` against it. The end-to-end test was committed as a pending spec before the features it covers.
+- **A harness instead of trust.** [CLAUDE.md](CLAUDE.md) turns this document's invariants into rules for the agent (e.g. lookups never return notes or names). Hooks format and typecheck every edit, block edits to applied migrations, generated code and `.env` files, and stop the agent from finishing while `npm run check` fails.
+- **One vertical slice per session**, each ending green and committed, so I reviewed the work in small pieces.
+
+**What the AI generated:** most of the code and tests within those constraints: scaffolding, Express routes, React pages and Tailwind layouts, Supertest and Playwright tests, and drafts of commit messages and README text.
