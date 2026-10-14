@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 test("web app loads", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Bike Repair Tracker" })).toBeVisible();
+  await page.goto("/login");
+  await expect(page.getByRole("heading", { name: "Staff login" })).toBeVisible();
 });
 
 test("web dev server proxies /api to the API", async ({ request }) => {
