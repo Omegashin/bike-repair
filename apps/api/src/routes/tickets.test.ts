@@ -1,6 +1,11 @@
-import { generateTicketNumber, shopToday, TICKET_NUMBER_PATTERN } from "@bike-repair/shared";
+import {
+  generateTicketNumber,
+  shopToday,
+  TICKET_NUMBER_PATTERN,
+  type Status,
+} from "@bike-repair/shared";
 import request from "supertest";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetDb } from "../../test/db.ts";
 import { staffAgent } from "../../test/session.ts";
 import { createApp } from "../app.ts";
@@ -120,5 +125,146 @@ describe("POST /api/tickets", () => {
     expect(generateTicketNumber).toHaveBeenCalledTimes(2);
     expect(await prisma.ticket.count()).toBe(2);
     expect(await prisma.ticketEvent.count()).toBe(2);
+  });
+});
+
+let phoneSeq = 0;
+
+// Inserts a ticket directly, so tests can set any status, date or creation time
+// (intake only allows promised-by dates from today on).
+async function makeTicket(t: {
+  number: string;
+  status?: Status;
+  promisedBy: string;
+  createdAt?: Date;
+  customerName?: string;
+}) {
+  return prisma.ticket.create({
+    data: {
+      number: t.number,
+      status: t.status ?? "received",
+      promisedBy: fromDateString(t.promisedBy),
+      createdAt: t.createdAt,
+      bikeDescription: `Bike ${t.number}`,
+      problem: "Secret internal problem",
+      customer: {
+        create: {
+          name: t.customerName ?? `Customer ${t.number}`,
+          phone: `604555${1000 + phoneSeq++}`,
+        },
+      },
+      events: { create: { fromStatus: null, toStatus: "received", note: "Internal note" } },
+    },
+  });
+}
+
+describe("GET /api/tickets (queue)", () => {
+  let agent: Awaited<ReturnType<typeof staffAgent>>;
+
+  beforeEach(async () => {
+    await resetDb();
+    agent = await staffAgent(app);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns 401 without a staff session", async () => {
+    const res = await request(app).get("/api/tickets");
+    expect(res.status).toBe(401);
+  });
+
+  it("lists open tickets with only the queue fields (no phone, problem or notes)", async () => {
+    await makeTicket({ number: "AAAA22", promisedBy: "2030-01-01", customerName: "Maya Chen" });
+    const res = await agent.get("/api/tickets");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([
+      {
+        number: "AAAA22",
+        customerName: "Maya Chen",
+        bikeDescription: "Bike AAAA22",
+        status: "received",
+        promisedBy: "2030-01-01",
+        overdue: false,
+      },
+    ]);
+  });
+
+  it("leaves out picked-up tickets", async () => {
+    await makeTicket({ number: "OPEN22", status: "ready_for_pickup", promisedBy: "2030-01-01" });
+    await makeTicket({ number: "DONE22", status: "picked_up", promisedBy: "2030-01-01" });
+    const res = await agent.get("/api/tickets");
+    expect(res.body.map((t: { number: string }) => t.number)).toEqual(["OPEN22"]);
+  });
+
+  it("sorts by promised-by date, then by creation time", async () => {
+    await makeTicket({
+      number: "CCCC22",
+      promisedBy: "2030-01-05",
+      createdAt: new Date("2026-10-02"),
+    });
+    await makeTicket({
+      number: "AAAA22",
+      promisedBy: "2030-01-03",
+      createdAt: new Date("2026-10-03"),
+    });
+    await makeTicket({
+      number: "BBBB22",
+      promisedBy: "2030-01-05",
+      createdAt: new Date("2026-10-01"),
+    });
+    const res = await agent.get("/api/tickets");
+    expect(res.body.map((t: { number: string }) => t.number)).toEqual([
+      "AAAA22",
+      "BBBB22",
+      "CCCC22",
+    ]);
+  });
+
+  it("filters by status", async () => {
+    await makeTicket({ number: "DIAG22", status: "diagnosing", promisedBy: "2030-01-01" });
+    await makeTicket({ number: "PART22", status: "waiting_on_parts", promisedBy: "2030-01-01" });
+    const res = await agent.get("/api/tickets?status=waiting_on_parts");
+    expect(res.status).toBe(200);
+    expect(res.body.map((t: { number: string }) => t.number)).toEqual(["PART22"]);
+  });
+
+  it("never lists picked-up tickets, even when filtering for them", async () => {
+    await makeTicket({ number: "DONE22", status: "picked_up", promisedBy: "2030-01-01" });
+    const res = await agent.get("/api/tickets?status=picked_up");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+  });
+
+  it("returns 400 for an unknown status filter", async () => {
+    const res = await agent.get("/api/tickets?status=lost");
+    expect(res.status).toBe(400);
+    expect(res.body.fieldErrors).toHaveProperty("status");
+  });
+
+  describe("overdue, at the promised-by day's midnight in the shop's time zone", () => {
+    // Tests run with SHOP_TIME_ZONE=America/Vancouver (vitest.config.ts): UTC-7 in October.
+    beforeEach(async () => {
+      await makeTicket({ number: "LATE22", status: "in_progress", promisedBy: "2026-10-13" });
+      await makeTicket({ number: "DONE22", status: "ready_for_pickup", promisedBy: "2026-10-13" });
+    });
+
+    async function overdueAt(utc: string) {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date(utc));
+      const res = await agent.get("/api/tickets");
+      return Object.fromEntries(
+        res.body.map((t: { number: string; overdue: boolean }) => [t.number, t.overdue]),
+      );
+    }
+
+    it("is not overdue at 23:59 shop time on the promised-by day (already the next day in UTC)", async () => {
+      expect(await overdueAt("2026-10-14T06:59:00Z")).toEqual({ LATE22: false, DONE22: false });
+    });
+
+    it("is overdue from 00:00 shop time the next day, unless ready for pickup", async () => {
+      expect(await overdueAt("2026-10-14T07:00:00Z")).toEqual({ LATE22: true, DONE22: false });
+    });
   });
 });

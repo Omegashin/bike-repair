@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { STATUSES } from "./status.ts";
 
 // Request bodies, validated by the API and reused by the web forms.
 
@@ -39,3 +40,10 @@ export function createIntakeSchema(today: string) {
 }
 
 export type IntakeInput = z.input<ReturnType<typeof createIntakeSchema>>;
+
+// Query string for the staff queue (GET /api/tickets).
+export const queueQuerySchema = z.object({
+  status: z.enum(STATUSES, "Unknown status").optional(),
+});
+
+export type QueueQuery = z.infer<typeof queueQuerySchema>;

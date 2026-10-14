@@ -2,8 +2,24 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import request from "supertest";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "./app.ts";
+
+describe("startup config", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("fails fast when SHOP_TIME_ZONE is missing", () => {
+    vi.stubEnv("SHOP_TIME_ZONE", "");
+    expect(() => createApp()).toThrow(/SHOP_TIME_ZONE must be set/);
+  });
+
+  it("fails fast when SHOP_TIME_ZONE isn't a valid IANA time zone", () => {
+    vi.stubEnv("SHOP_TIME_ZONE", "Vancouver");
+    expect(() => createApp()).toThrow(/SHOP_TIME_ZONE "Vancouver" is not a valid IANA time zone/);
+  });
+});
 
 describe("GET /api/health", () => {
   it("responds ok", async () => {

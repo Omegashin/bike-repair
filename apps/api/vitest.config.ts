@@ -24,6 +24,8 @@ export default defineProject({
       DATABASE_URL: testUrl,
       STAFF_PASSWORD: "test-staff-password",
       SESSION_SECRET: "test-session-secret-at-least-32-chars",
+      // Fixed zone so overdue tests can pin the shop-time midnight cutoff.
+      SHOP_TIME_ZONE: "America/Vancouver",
     },
     // Tests share one database, so run files one at a time.
     fileParallelism: false,

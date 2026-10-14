@@ -3,7 +3,8 @@ import path from "node:path";
 import { assertAuthConfig, requireStaff } from "./middleware/auth.ts";
 import { errorHandler } from "./middleware/errors.ts";
 import { sessionRouter } from "./routes/session.ts";
-import { ticketsRouter } from "./routes/tickets.ts";
+import { shopTimeZone } from "./db.ts";
+import { createTicketsRouter } from "./routes/tickets.ts";
 
 type AppOptions = {
   // Built frontend (apps/web/dist). When set, Express serves it so the app runs from one URL.
@@ -12,6 +13,7 @@ type AppOptions = {
 
 export function createApp({ webDir }: AppOptions = {}) {
   assertAuthConfig();
+  const timeZone = shopTimeZone();
   const app = express();
   app.use(express.json());
 
@@ -20,7 +22,7 @@ export function createApp({ webDir }: AppOptions = {}) {
   });
 
   app.use("/api/session", sessionRouter);
-  app.use("/api/tickets", requireStaff, ticketsRouter);
+  app.use("/api/tickets", requireStaff, createTicketsRouter({ timeZone }));
 
   // Unknown API routes get JSON, never the frontend's index.html.
   app.use("/api", (_req, res) => {

@@ -37,6 +37,7 @@ export default defineConfig({
         PORT: String(API_PORT),
         STAFF_PASSWORD: E2E_STAFF_PASSWORD,
         SESSION_SECRET: "e2e-session-secret-at-least-32-chars",
+        SHOP_TIME_ZONE: "America/Vancouver",
       },
       url: `http://localhost:${API_PORT}/api/health`,
       reuseExistingServer: true,

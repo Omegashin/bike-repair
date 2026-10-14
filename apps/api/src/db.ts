@@ -15,6 +15,16 @@ export function fromDateString(date: string): Date {
 }
 
 // IANA zone that decides the shop's calendar date (overdue, promised-by checks).
+// Required: createApp reads it once, so a missing or mistyped zone fails at startup.
 export function shopTimeZone(): string {
-  return process.env.SHOP_TIME_ZONE ?? "America/Vancouver";
+  const value = process.env.SHOP_TIME_ZONE;
+  if (!value) {
+    throw new Error("SHOP_TIME_ZONE must be set, e.g. America/Vancouver (see .env.example)");
+  }
+  try {
+    new Intl.DateTimeFormat("en-CA", { timeZone: value });
+  } catch {
+    throw new Error(`SHOP_TIME_ZONE "${value}" is not a valid IANA time zone`);
+  }
+  return value;
 }
