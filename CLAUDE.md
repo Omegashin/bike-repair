@@ -18,18 +18,21 @@ Follow this layout; don't invent new top-level folders. Create a folder only whe
 ```
 packages/shared/src/
   status.ts, overdue.ts       business rules
-  schemas.ts                  Zod request schemas (intake, status change, lookup)
+  ticketNumber.ts             public ticket number format and generator
+  schemas.ts                  Zod request schemas (login, intake, queue filter, status change, lookup)
 apps/api/src/
   index.ts                    listen only
   app.ts                      middleware + mounts routers; no route logic
   db.ts                       Prisma client + date helpers
   routes/tickets.ts           staff endpoints (+ tickets.test.ts beside it)
   routes/lookup.ts            public customer lookup (+ lookup.test.ts)
+  routes/session.ts           shared staff login/logout (+ session.test.ts)
   middleware/                 auth, error handler
 apps/web/src/
   main.tsx, App.tsx           entry + page routing
   api.ts                      the only place that calls fetch
-  pages/                      one component per screen: QueuePage, IntakePage, TicketPage, LookupPage
+  format.ts                   date and phone display (+ format.test.ts)
+  pages/                      one component per screen: LoginPage, QueuePage, IntakePage, TicketPage, LookupPage
   components/                 UI pieces used by more than one page
 ```
 

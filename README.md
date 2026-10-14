@@ -19,7 +19,7 @@ The seed ([seed.ts](apps/api/prisma/seed.ts)) creates 7 tickets covering every s
 
 **Staff** (http://localhost:8080/login, or http://localhost:5173/login in development): password `bikeshop` (set by `STAFF_PASSWORD`; see [.env.example](.env.example)).
 
-- **Queue** (`/`): open tickets, soonest first, with three overdue; filter by status.
+- **Queue** (`/`): open tickets, soonest first, with two overdue; filter by status.
 - **New ticket** (`/tickets/new`): create a ticket and get its number for the bike tag.
 - **Ticket** (click any queue row, e.g. `/tickets/K7P2QX`): details, history, and buttons to move it to its next status with an optional note.
 
@@ -42,6 +42,7 @@ Requires Node 24+ and Docker (for Postgres).
 cp .env.example .env
 npm install
 npm run db:up      # Postgres only
+npm run db:migrate # create the tables
 npm run db:seed    # demo data
 npm run dev:api    # http://localhost:3000/api/health
 npm run dev:web    # http://localhost:5173 (proxies /api to the API)
