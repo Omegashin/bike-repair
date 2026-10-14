@@ -19,6 +19,8 @@ Staff login: password `bikeshop` (set by `STAFF_PASSWORD`; see [.env.example](.e
 
 The seed ([seed.ts](apps/api/prisma/seed.ts)) creates 7 tickets covering every status, with promised-by dates relative to today so some are always overdue. Browse them with `npm run db:studio` (needs `npm run db:up`).
 
+Customer lookup: ticket `K7P2QX` with phone digits `0142` (Maya Chen's bike, status Received).
+
 ## Develop
 
 Requires Node 24+ and Docker (for Postgres).

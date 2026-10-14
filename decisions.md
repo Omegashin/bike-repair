@@ -50,7 +50,7 @@ Version 1 is a repair ticket tracker with four features.
 1. **Intake:** staff create a ticket with customer name, phone, bike description, problem and promised-by date, and get a short ticket number to write on the bike tag: 6 random characters from uppercase letters and digits, leaving out look-alikes (0/O, 1/I/L) so handwritten tags read back correctly. Random rather than sequential, so numbers don't reveal neighbouring tickets; a rare collision is retried. Name, phone, bike and promised-by date (today or later, in the shop's time zone) are required; the problem is optional. Phones are stored as digits only (10–15), and a returning customer's phone reuses their existing record.
 2. **Queue:** all tickets not yet picked up, filterable by status and sorted by promised-by date. A ticket is **overdue** when its promised-by date has passed and it isn't Ready for pickup or Picked up.
 3. **Status updates:** staff move a ticket to its next status with an optional internal note. Every change is stored as an event, giving the ticket a full history.
-4. **Customer lookup:** ticket number plus the last 4 digits of the phone shows the current status and promised-by date. No login, and internal notes are never shown.
+4. **Customer lookup:** ticket number (any case) plus the last 4 digits of the phone shows the current status and promised-by date, including after pickup. No login, and internal notes, customer details and history are never shown. The form posts its fields rather than putting them in the URL, so phone digits stay out of browser history and server logs.
 
 **Status rules** (shared by the API and UI; the API rejects anything else):
 

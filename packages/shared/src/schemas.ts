@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { STATUSES } from "./status.ts";
+import { TICKET_NUMBER_PATTERN } from "./ticketNumber.ts";
 
 // Request bodies, validated by the API and reused by the web forms.
 
@@ -62,3 +63,19 @@ export const statusChangeSchema = z.object({
 });
 
 export type StatusChangeInput = z.input<typeof statusChangeSchema>;
+
+// Customer status lookup (POST /api/lookup). The ticket number is typed from the tag,
+// so any case is accepted and it comes out uppercase, as stored.
+export const lookupSchema = z.object({
+  ticketNumber: z
+    .string("Enter your ticket number")
+    .trim()
+    .toUpperCase()
+    .regex(TICKET_NUMBER_PATTERN, "Enter the 6-character ticket number from your tag"),
+  phoneLast4: z
+    .string("Enter the last 4 digits of your phone number")
+    .trim()
+    .regex(/^\d{4}$/, "Enter the last 4 digits of your phone number"),
+});
+
+export type LookupInput = z.input<typeof lookupSchema>;

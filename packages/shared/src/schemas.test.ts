@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createIntakeSchema, statusChangeSchema } from "./schemas.ts";
+import { createIntakeSchema, lookupSchema, statusChangeSchema } from "./schemas.ts";
 
 const TODAY = "2026-10-14";
 const schema = createIntakeSchema(TODAY);
@@ -99,5 +99,33 @@ describe("status change schema", () => {
     expect(statusChangeSchema.parse({ to: "diagnosing", note: "x".repeat(500) }).note).toHaveLength(
       500,
     );
+  });
+});
+
+describe("lookup schema", () => {
+  it("accepts a ticket number in any case and returns it uppercase", () => {
+    expect(lookupSchema.parse({ ticketNumber: " k7p2qx ", phoneLast4: "0142" })).toEqual({
+      ticketNumber: "K7P2QX",
+      phoneLast4: "0142",
+    });
+  });
+
+  it("requires both fields", () => {
+    const result = lookupSchema.safeParse({});
+    expect(result.success).toBe(false);
+    expect(result.error!.issues.map((i) => i.path.join(".")).sort()).toEqual([
+      "phoneLast4",
+      "ticketNumber",
+    ]);
+  });
+
+  it.each(["K7P2Q", "K7P2QXX", "K7P2Q0", "K7P2-X", ""])("rejects ticket number %j", (number) => {
+    expect(lookupSchema.safeParse({ ticketNumber: number, phoneLast4: "0142" }).success).toBe(
+      false,
+    );
+  });
+
+  it.each(["142", "01422", "01a2", "", 142])("rejects phone digits %j", (phoneLast4) => {
+    expect(lookupSchema.safeParse({ ticketNumber: "K7P2QX", phoneLast4 }).success).toBe(false);
   });
 });
