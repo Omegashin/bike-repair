@@ -7,6 +7,9 @@ type FieldProps = {
   required?: boolean;
   // A textarea for longer free text.
   multiline?: boolean;
+  // Side by side with another Field (from sm up): share its label, hint, input and
+  // error rows, so the inputs line up even when only one of them has a hint.
+  inRow?: boolean;
 } & InputHTMLAttributes<HTMLInputElement & HTMLTextAreaElement>;
 
 // A labelled input with its error announced right below it.
@@ -16,6 +19,7 @@ export function Field({
   hint,
   required,
   multiline,
+  inRow,
   className,
   ...input
 }: FieldProps) {
@@ -37,7 +41,7 @@ export function Field({
   };
 
   return (
-    <div>
+    <div className={inRow ? "sm:row-span-4 sm:grid sm:grid-rows-subgrid" : undefined}>
       <label htmlFor={id} className="mb-1 block font-medium text-gray-900">
         {label}
         {required ? (
@@ -49,10 +53,13 @@ export function Field({
           <span className="font-normal text-gray-600"> (optional)</span>
         )}
       </label>
-      {hint && (
+      {hint ? (
         <p id={hintId} className="mb-1 text-sm text-gray-600">
           {hint}
         </p>
+      ) : (
+        // Holds the hint row open beside a Field that has one.
+        inRow && <span aria-hidden="true" />
       )}
       {multiline ? <textarea rows={3} {...shared} /> : <input {...shared} />}
       {/* Always rendered so screen readers announce an error when it appears. */}

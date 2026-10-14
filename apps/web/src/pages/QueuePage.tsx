@@ -55,19 +55,34 @@ export function QueuePage() {
           <label htmlFor="status-filter" className="mb-1 block font-medium text-gray-900">
             Status
           </label>
-          <select
-            id="status-filter"
-            className="block min-h-11 w-full rounded-md border border-gray-400 bg-white px-3 py-2 text-base sm:w-56"
-            value={filter ?? ""}
-            onChange={(e) => setSearchParams(e.target.value ? { status: e.target.value } : {})}
-          >
-            <option value="">All open tickets</option>
-            {FILTER_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {STATUS_LABELS[status]}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            {/* Native arrow hidden (it ignores padding); this chevron sits inside the box. */}
+            <select
+              id="status-filter"
+              className="block min-h-11 w-full appearance-none rounded-md border border-gray-400 bg-white py-2 pr-10 pl-3 text-base sm:w-56"
+              value={filter ?? ""}
+              onChange={(e) => setSearchParams(e.target.value ? { status: e.target.value } : {})}
+            >
+              <option value="">All open tickets</option>
+              {FILTER_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {STATUS_LABELS[status]}
+                </option>
+              ))}
+            </select>
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className="pointer-events-none absolute top-1/2 right-3 size-5 -translate-y-1/2 text-gray-600"
+            >
+              <path
+                fillRule="evenodd"
+                d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </div>
         </div>
       </div>
 

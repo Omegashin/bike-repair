@@ -98,8 +98,10 @@ export function IntakePage() {
         noValidate
         className="space-y-5 rounded-lg border border-gray-200 bg-white p-4 sm:p-6"
       >
-        <div className="grid gap-5 sm:grid-cols-2">
+        {/* No row gap from sm up: the two Fields share subgrid rows (see Field inRow). */}
+        <div className="grid gap-5 sm:grid-cols-2 sm:gap-y-0">
           <Field
+            inRow
             label="Customer name"
             name="customerName"
             autoComplete="off"
@@ -110,6 +112,7 @@ export function IntakePage() {
             error={errors.customerName}
           />
           <Field
+            inRow
             label="Phone"
             name="phone"
             type="tel"
