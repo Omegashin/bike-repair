@@ -373,3 +373,152 @@ describe("GET /api/tickets/:number (detail)", () => {
     expect(res.body).toEqual({ error: "Ticket not found" });
   });
 });
+
+describe("POST /api/tickets/:number/status", () => {
+  let agent: Awaited<ReturnType<typeof staffAgent>>;
+
+  beforeEach(async () => {
+    await resetDb();
+    agent = await staffAgent(app);
+  });
+
+  async function stored(number: string) {
+    const ticket = await prisma.ticket.findUniqueOrThrow({
+      where: { number },
+      include: { events: { orderBy: { createdAt: "asc" } } },
+    });
+    return { status: ticket.status, events: ticket.events };
+  }
+
+  it("returns 401 without a staff session and changes nothing", async () => {
+    await makeTicket({ number: "AAAA22", promisedBy: "2030-01-01" });
+    const res = await request(app).post("/api/tickets/AAAA22/status").send({ to: "diagnosing" });
+    expect(res.status).toBe(401);
+    expect((await stored("AAAA22")).status).toBe("received");
+  });
+
+  it("moves the ticket, writes exactly one event with the trimmed note, and returns the detail", async () => {
+    await makeTicket({ number: "AAAA22", promisedBy: "2030-01-01" });
+    const res = await agent
+      .post("/api/tickets/aaaa22/status")
+      .send({ to: "diagnosing", note: "  Checking the brakes  " });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      number: "AAAA22",
+      status: "diagnosing",
+      customer: { name: "Customer AAAA22" },
+      overdue: false,
+      nextStatuses: ["waiting_on_parts", "in_progress"],
+    });
+    expect(res.body.history).toHaveLength(2);
+    expect(res.body.history[1]).toMatchObject({
+      from: "received",
+      to: "diagnosing",
+      note: "Checking the brakes",
+    });
+
+    const { status, events } = await stored("AAAA22");
+    expect(status).toBe("diagnosing");
+    expect(events).toHaveLength(2);
+    expect(events[1]).toMatchObject({
+      fromStatus: "received",
+      toStatus: "diagnosing",
+      note: "Checking the brakes",
+    });
+  });
+
+  it("stores no note when it is left out", async () => {
+    await makeTicket({ number: "AAAA22", promisedBy: "2030-01-01" });
+    await agent.post("/api/tickets/AAAA22/status").send({ to: "diagnosing" });
+    expect((await stored("AAAA22")).events[1].note).toBeNull();
+  });
+
+  it("returns 409 with the allowed next statuses for a disallowed move, writing nothing", async () => {
+    await makeTicket({ number: "AAAA22", promisedBy: "2030-01-01" });
+    const res = await agent.post("/api/tickets/AAAA22/status").send({ to: "ready_for_pickup" });
+    expect(res.status).toBe(409);
+    expect(res.body).toEqual({ error: expect.any(String), allowed: ["diagnosing"] });
+
+    const { status, events } = await stored("AAAA22");
+    expect(status).toBe("received");
+    expect(events).toHaveLength(1);
+  });
+
+  it("treats picked up as final", async () => {
+    await makeTicket({ number: "DONE22", status: "picked_up", promisedBy: "2030-01-01" });
+    for (const to of STATUSES) {
+      const res = await agent.post("/api/tickets/DONE22/status").send({ to });
+      expect(res.status, to).toBe(409);
+      expect(res.body.allowed, to).toEqual([]);
+    }
+    expect((await stored("DONE22")).events).toHaveLength(1);
+  });
+
+  it("returns 400 for a note over 500 characters or an unknown status, writing nothing", async () => {
+    await makeTicket({ number: "AAAA22", promisedBy: "2030-01-01" });
+    const longNote = await agent
+      .post("/api/tickets/AAAA22/status")
+      .send({ to: "diagnosing", note: "x".repeat(501) });
+    expect(longNote.status).toBe(400);
+    expect(longNote.body.fieldErrors).toHaveProperty("note");
+
+    const unknown = await agent.post("/api/tickets/AAAA22/status").send({ to: "lost" });
+    expect(unknown.status).toBe(400);
+    expect(unknown.body.fieldErrors).toHaveProperty("to");
+
+    const { status, events } = await stored("AAAA22");
+    expect(status).toBe("received");
+    expect(events).toHaveLength(1);
+  });
+
+  it("returns 404 for an unknown ticket number", async () => {
+    const res = await agent.post("/api/tickets/ZZZZ99/status").send({ to: "diagnosing" });
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ error: "Ticket not found" });
+  });
+
+  // Polls until some request is blocked waiting for a row lock.
+  async function waitForBlockedRequest() {
+    for (let i = 0; i < 200; i++) {
+      const [{ blocked }] = await prisma.$queryRaw<{ blocked: number }[]>`
+        SELECT count(*)::int AS blocked FROM pg_stat_activity
+        WHERE datname = current_database() AND wait_event_type = 'Lock'`;
+      if (blocked > 0) return;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    throw new Error("The request never blocked on the ticket's row lock");
+  }
+
+  it("lets only one of two simultaneous changes win; the other gets 409", async () => {
+    const ticket = await makeTicket({
+      number: "RACE22",
+      status: "diagnosing",
+      promisedBy: "2030-01-01",
+    });
+
+    // Force the losing interleaving: another staff member's change locks the row, our
+    // request reads "diagnosing" and blocks on its update, then the other change commits.
+    let pending!: Promise<request.Response>;
+    await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Ticket" WHERE id = ${ticket.id} FOR UPDATE`;
+      pending = agent
+        .post("/api/tickets/RACE22/status")
+        .send({ to: "in_progress" })
+        .then((res) => res);
+      await waitForBlockedRequest();
+      await tx.ticket.update({ where: { id: ticket.id }, data: { status: "waiting_on_parts" } });
+      await tx.ticketEvent.create({
+        data: { ticketId: ticket.id, fromStatus: "diagnosing", toStatus: "waiting_on_parts" },
+      });
+    });
+
+    const res = await pending;
+    expect(res.status).toBe(409);
+    expect(res.body).toEqual({ error: expect.any(String), allowed: ["in_progress"] });
+
+    const { status, events } = await stored("RACE22");
+    expect(status).toBe("waiting_on_parts");
+    expect(events.map((e) => e.toStatus)).toEqual(["received", "waiting_on_parts"]);
+  });
+});

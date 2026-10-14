@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createIntakeSchema } from "./schemas.ts";
+import { createIntakeSchema, statusChangeSchema } from "./schemas.ts";
 
 const TODAY = "2026-10-14";
 const schema = createIntakeSchema(TODAY);
@@ -79,5 +79,25 @@ describe("intake schema", () => {
     it.each(["2026-02-30", "17/10/2026", "2026-10-17T00:00:00Z", ""])("rejects %s", (date) => {
       expect(fieldErrors({ ...valid, promisedBy: date })).toEqual(["promisedBy"]);
     });
+  });
+});
+
+describe("status change schema", () => {
+  it("accepts a known status with an optional note, trimmed", () => {
+    expect(statusChangeSchema.parse({ to: "diagnosing", note: "  Checking brakes " })).toEqual({
+      to: "diagnosing",
+      note: "Checking brakes",
+    });
+    expect(statusChangeSchema.parse({ to: "diagnosing", note: "  " }).note).toBeUndefined();
+  });
+
+  it("rejects an unknown status and a note over 500 characters", () => {
+    expect(statusChangeSchema.safeParse({ to: "lost" }).success).toBe(false);
+    expect(statusChangeSchema.safeParse({ to: "diagnosing", note: "x".repeat(501) }).success).toBe(
+      false,
+    );
+    expect(statusChangeSchema.parse({ to: "diagnosing", note: "x".repeat(500) }).note).toHaveLength(
+      500,
+    );
   });
 });

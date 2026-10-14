@@ -47,3 +47,18 @@ export const queueQuerySchema = z.object({
 });
 
 export type QueueQuery = z.infer<typeof queueQuerySchema>;
+
+// Moving a ticket to another status (POST /api/tickets/:number/status). Whether the
+// move is allowed is checked against status.ts by the API, not here.
+export const statusChangeSchema = z.object({
+  to: z.enum(STATUSES, "Choose a status"),
+  // Internal only; never shown to the customer.
+  note: z
+    .string()
+    .trim()
+    .max(500, "Keep the note to 500 characters")
+    .optional()
+    .transform((value) => value || undefined),
+});
+
+export type StatusChangeInput = z.input<typeof statusChangeSchema>;

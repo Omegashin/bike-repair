@@ -1,10 +1,13 @@
 import {
+  canTransition,
   createIntakeSchema,
   generateTicketNumber,
   isOverdue,
   nextStatuses,
   queueQuerySchema,
   shopToday,
+  STATUS_LABELS,
+  statusChangeSchema,
 } from "@bike-repair/shared";
 import { Router } from "express";
 import { fromDateString, prisma, toDateString } from "../db.ts";
@@ -141,6 +144,50 @@ export function createTicketsRouter({ timeZone }: RouterOptions) {
       return;
     }
     res.json(toDetailJson(ticket));
+  });
+
+  // Status change: update the ticket and write its event in one transaction.
+  router.post("/:number/status", async (req, res) => {
+    const { to, note } = statusChangeSchema.parse(req.body);
+    const ticket = await prisma.ticket.findUnique({
+      where: { number: normalizeNumber(req.params.number) },
+    });
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+    const from = ticket.status;
+    if (!canTransition(from, to)) {
+      res.status(409).json({
+        error: `Can't move a ticket from ${STATUS_LABELS[from]} to ${STATUS_LABELS[to]}`,
+        allowed: nextStatuses(from),
+      });
+      return;
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      // Only if the status is still the one checked above: when two staff change the
+      // same ticket at once, the second update waits for the first, then matches nothing.
+      const { count } = await tx.ticket.updateMany({
+        where: { id: ticket.id, status: from },
+        data: { status: to },
+      });
+      if (count === 0) return null;
+      await tx.ticketEvent.create({
+        data: { ticketId: ticket.id, fromStatus: from, toStatus: to, note: note ?? null },
+      });
+      return tx.ticket.findUniqueOrThrow({ where: { id: ticket.id }, include: withHistory });
+    });
+
+    if (!updated) {
+      const current = await prisma.ticket.findUniqueOrThrow({ where: { id: ticket.id } });
+      res.status(409).json({
+        error: "Someone else just changed this ticket's status. Check it and try again.",
+        allowed: nextStatuses(current.status),
+      });
+      return;
+    }
+    res.json(toDetailJson(updated));
   });
 
   return router;
