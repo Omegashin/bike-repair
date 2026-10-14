@@ -1,5 +1,5 @@
 // The only place the web app calls fetch. One typed function per endpoint.
-import type { IntakeInput, Status, StatusChangeInput } from "@bike-repair/shared";
+import type { IntakeInput, LookupInput, Status, StatusChangeInput } from "@bike-repair/shared";
 
 // One message per field, ready to show next to the input.
 export type FieldErrors = Record<string, string>;
@@ -157,4 +157,18 @@ export function changeStatus(number: string, input: StatusChangeInput): Promise<
     body: input,
     staff: true,
   });
+}
+
+// Customer lookup (public)
+
+export type LookupResult = {
+  ticketNumber: string;
+  status: Status;
+  promisedBy: string;
+};
+
+// POST, so the phone digits stay out of the URL. A wrong ticket number and wrong
+// digits both throw the same 404; too many tries throws a 429.
+export function lookUpRepair(input: LookupInput): Promise<LookupResult> {
+  return request("/lookup", { method: "POST", body: input });
 }
