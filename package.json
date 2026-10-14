@@ -10,6 +10,7 @@
     "packages/*"
   ],
   "scripts": {
+    "start": "docker compose up --build",
     "dev:web": "npm run dev -w apps/web",
     "dev:api": "npm run dev -w apps/api",
     "db:up": "docker compose up -d --wait db",

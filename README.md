@@ -2,6 +2,17 @@
 
 Repair ticket tracker for a small bike shop. See [decisions.md](decisions.md) for scope and design.
 
+## Run it
+
+Requires Docker.
+
+```sh
+docker compose up --build
+```
+
+Open http://localhost:8080. The database is migrated and seeded with demo data on first start.
+Ports are configurable with `APP_PORT` and `DB_PORT` (defaults 8080 and 5433).
+
 ## Demo data
 
 The seed ([seed.ts](apps/api/prisma/seed.ts)) creates 7 tickets covering every status, with promised-by dates relative to today so some are always overdue. Browse them with `npm run db:studio` (needs `npm run db:up`).
