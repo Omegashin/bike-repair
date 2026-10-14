@@ -3,5 +3,6 @@
 **/src/generated
 .git
 .env
+.claude
 e2e
 *.pdf

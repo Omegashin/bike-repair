@@ -1,6 +1,6 @@
 # Bike Repair Tracker
 
-Repair ticket tracker for a small bike shop. See [decisions.md](decisions.md) for scope and design.
+Repair ticket tracker for a small bike shop. See [decisions.md](decisions.md) for scope and design, and [CLAUDE.md](CLAUDE.md) for the rules AI-assisted changes follow.
 
 ## Run it
 
@@ -36,6 +36,14 @@ npm run dev:web    # http://localhost:5173 (proxies /api to the API)
 npm run check      # typecheck, lint, formatting, unit and API tests (needs `npm run db:up`)
 npm run test:e2e   # Playwright, desktop and mobile (first time: npx playwright install chromium)
 ```
+
+## AI-assisted development
+
+This repo was built with Claude Code inside a small harness, so AI-written code is held to the same checks as mine:
+
+- [CLAUDE.md](CLAUDE.md): the project's rules for the agent: invariants from the decision document, where code goes, and the commands to verify work.
+- [.claude/hooks/](.claude/hooks/): after every edit, the file is formatted and typechecked; edits to existing migrations, generated code and `.env` files are blocked; and the agent can't finish a turn while `npm run check` fails.
+- Business rules were specified as tests first ([status.test.ts](packages/shared/src/status.test.ts)), so the agent implemented against my spec rather than writing its own.
 
 ## Dependency notes
 
