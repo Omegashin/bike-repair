@@ -16,6 +16,10 @@ export function createApp({ webDir }: AppOptions = {}) {
   assertAuthConfig();
   const timeZone = shopTimeZone();
   const app = express();
+  // Behind one reverse proxy (Render), take the client IP from its X-Forwarded-For entry
+  // so the lookup rate limit counts real clients. Off by default: without a proxy, a
+  // client could set the header itself to dodge the limit.
+  if (process.env.TRUST_PROXY === "1") app.set("trust proxy", 1);
   app.use(express.json());
 
   app.get("/api/health", (_req, res) => {

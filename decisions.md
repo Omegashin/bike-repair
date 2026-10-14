@@ -95,7 +95,7 @@ A TypeScript monorepo (npm workspaces): a React frontend, a REST API, and Postgr
 
 I chose a stack I can build in quickly and that a future developer at a small shop could pick up easily.
 
-**Architecture:** the browser calls the REST API, which validates every request with Zod, applies the status rules, and reads and writes PostgreSQL through Prisma. Staff endpoints (create, list, view with history, change status) require the shared staff login. The customer lookup is a separate public, rate-limited endpoint that returns only status and promised-by date.
+**Architecture:** the browser calls the REST API, which validates every request with Zod, applies the status rules, and reads and writes PostgreSQL through Prisma. Staff endpoints (create, list, view with history, change status) require the shared staff login. The customer lookup is a separate public endpoint, limited to 10 attempts per client IP per 15 minutes, that returns only status and promised-by date.
 
 **Data model:**
 
@@ -112,7 +112,7 @@ A status change updates the ticket and writes its event in one transaction, so t
 - Staff endpoints return `401` without a valid session.
 - A lookup with a wrong ticket number or wrong phone digits returns the same `404`, so responses don't reveal which tickets exist.
 
-**Deployment:** in production, Express serves both `/api` and the built React files from one URL, so there's one deploy and no CORS setup. Render runs `prisma migrate deploy` on each build; the database URL and the shop's time zone are the only environment-specific settings.
+**Deployment:** in production, Express serves both `/api` and the built React files from one URL, so there's one deploy and no CORS setup. Render runs `prisma migrate deploy` on each build; the environment-specific settings are the database URL, the shop's time zone, the staff password and session secret, and `TRUST_PROXY=1` so the lookup's rate limit sees each client's IP behind Render's proxy.
 
 ## Testing approach
 

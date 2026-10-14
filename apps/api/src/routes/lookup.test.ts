@@ -1,6 +1,6 @@
 import { shopToday, type Status } from "@bike-repair/shared";
 import request from "supertest";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetDb } from "../../test/db.ts";
 import { staffAgent } from "../../test/session.ts";
 import { createApp } from "../app.ts";
@@ -113,5 +113,64 @@ describe("POST /api/lookup", () => {
     for (const secret of [note, intake.customerName, "6045550142", intake.problem]) {
       expect(res.text).not.toContain(secret);
     }
+  });
+});
+
+describe("lookup rate limit", () => {
+  const LIMIT = 10;
+  let number: string;
+
+  beforeEach(async () => {
+    await resetDb();
+    const res = await (await staffAgent()).post("/api/tickets").send(intake);
+    number = res.body.number;
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  function lookupFrom(app: ReturnType<typeof createApp>, body: object, forwardedFor?: string) {
+    const req = request(app).post("/api/lookup");
+    if (forwardedFor) req.set("X-Forwarded-For", forwardedFor);
+    return req.send(body);
+  }
+
+  it("blocks the 11th attempt in a window with a JSON 429, even with the right digits", async () => {
+    const app = createApp();
+    // Every attempt counts: misses, invalid input and matches alike.
+    for (let i = 0; i < LIMIT; i++) {
+      const body = i % 2 ? { ticketNumber: number, phoneLast4: "0000" } : { ticketNumber: "bad" };
+      const res = await lookupFrom(app, body);
+      expect(res.status).not.toBe(429);
+    }
+    const res = await lookupFrom(app, { ticketNumber: number, phoneLast4: "0142" });
+    expect(res.status).toBe(429);
+    expect(res.type).toBe("application/json");
+    expect(res.body).toEqual({ error: expect.stringMatching(/too many/i) });
+  });
+
+  it("doesn't limit staff routes", async () => {
+    const app = createApp();
+    for (let i = 0; i <= LIMIT; i++) await lookupFrom(app, { ticketNumber: "bad" });
+    const staff = await staffAgent(app);
+    expect((await staff.get("/api/tickets")).status).toBe(200);
+    expect((await staff.get(`/api/tickets/${number}`)).status).toBe(200);
+  });
+
+  it("ignores X-Forwarded-For unless TRUST_PROXY=1, so clients can't dodge the limit", async () => {
+    const app = createApp();
+    for (let i = 0; i < LIMIT; i++)
+      await lookupFrom(app, { ticketNumber: "bad" }, `203.0.113.${i}`);
+    const res = await lookupFrom(app, { ticketNumber: "bad" }, "203.0.113.99");
+    expect(res.status).toBe(429);
+  });
+
+  it("limits each client IP separately behind a proxy with TRUST_PROXY=1", async () => {
+    vi.stubEnv("TRUST_PROXY", "1");
+    const app = createApp();
+    for (let i = 0; i < LIMIT; i++) await lookupFrom(app, { ticketNumber: "bad" }, "203.0.113.1");
+    expect((await lookupFrom(app, { ticketNumber: "bad" }, "203.0.113.1")).status).toBe(429);
+    expect((await lookupFrom(app, { ticketNumber: "bad" }, "203.0.113.2")).status).toBe(400);
   });
 });

@@ -1,5 +1,6 @@
 import { lookupSchema } from "@bike-repair/shared";
 import { Router } from "express";
+import { rateLimit } from "express-rate-limit";
 import { prisma, toDateString } from "../db.ts";
 
 // Same body for an unknown ticket and for wrong phone digits, so a lookup can't be
@@ -11,7 +12,17 @@ const NOT_FOUND = { error: "We couldn't find a repair with that ticket number an
 export function createLookupRouter() {
   const router = Router();
 
-  router.post("/", async (req, res) => {
+  // Ten attempts per client IP per 15 minutes, matches included, to slow down guessing
+  // phone digits. Created per router so each app (and each test) has its own counts.
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: { error: "Too many lookups. Please wait 15 minutes and try again." },
+  });
+
+  router.post("/", limiter, async (req, res) => {
     const { ticketNumber, phoneLast4 } = lookupSchema.parse(req.body);
     const ticket = await prisma.ticket.findUnique({
       where: { number: ticketNumber },
