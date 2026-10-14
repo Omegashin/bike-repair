@@ -1,5 +1,5 @@
 // The only place the web app calls fetch. One typed function per endpoint.
-import type { Status } from "@bike-repair/shared";
+import type { IntakeInput, Status } from "@bike-repair/shared";
 
 // One message per field, ready to show next to the input.
 export type FieldErrors = Record<string, string>;
@@ -86,7 +86,13 @@ export function logOut(): Promise<void> {
   return request("/session", { method: "DELETE" });
 }
 
-export function getSession(): Promise<{ ok: true }> {
+export type Session = {
+  ok: true;
+  // The shop's IANA time zone; use with shopToday() for the shop's calendar date.
+  timeZone: string;
+};
+
+export function getSession(): Promise<Session> {
   return request("/session", { staff: true });
 }
 
@@ -105,4 +111,19 @@ export type QueueTicket = {
 export function getQueue(status?: Status): Promise<QueueTicket[]> {
   const query = status ? `?status=${encodeURIComponent(status)}` : "";
   return request(`/tickets${query}`, { staff: true });
+}
+
+export type Ticket = {
+  id: string;
+  number: string;
+  status: Status;
+  customer: { id: string; name: string; phone: string };
+  bikeDescription: string;
+  problem: string | null;
+  promisedBy: string;
+  createdAt: string;
+};
+
+export function createTicket(input: IntakeInput): Promise<Ticket> {
+  return request("/tickets", { method: "POST", body: input, staff: true });
 }

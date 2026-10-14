@@ -2,20 +2,22 @@ import { useEffect, useState } from "react";
 import { Link, Outlet, useNavigate } from "react-router";
 import { getSession, logOut } from "../api.ts";
 import { Button, ButtonLink } from "./Button.tsx";
+import type { StaffContext } from "./staffContext.ts";
 import { SHOP_NAME } from "./usePageTitle.ts";
 
 // Header and session check shared by every staff screen. Without a session, the
 // session check's 401 sends the browser to /login (see api.ts).
 export function StaffLayout() {
   const navigate = useNavigate();
-  const [ready, setReady] = useState(false);
+  // Undefined until the session check finishes.
+  const [context, setContext] = useState<StaffContext>();
   const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     getSession()
-      .then(() => setReady(true))
+      .then(({ timeZone }) => setContext({ timeZone }))
       // Server unreachable: show the page anyway; its own requests will report the error.
-      .catch(() => setReady(true));
+      .catch(() => setContext({ timeZone: undefined }));
   }, []);
 
   async function handleLogOut() {
@@ -42,7 +44,7 @@ export function StaffLayout() {
           </nav>
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-4 py-6">{ready && <Outlet />}</main>
+      <main className="mx-auto max-w-5xl px-4 py-6">{context && <Outlet context={context} />}</main>
     </div>
   );
 }

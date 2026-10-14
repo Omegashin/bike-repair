@@ -3,7 +3,7 @@ import path from "node:path";
 import { assertAuthConfig, requireStaff } from "./middleware/auth.ts";
 import { errorHandler } from "./middleware/errors.ts";
 import { createLookupRouter } from "./routes/lookup.ts";
-import { sessionRouter } from "./routes/session.ts";
+import { createSessionRouter } from "./routes/session.ts";
 import { shopTimeZone } from "./db.ts";
 import { createTicketsRouter } from "./routes/tickets.ts";
 
@@ -26,7 +26,7 @@ export function createApp({ webDir }: AppOptions = {}) {
     res.json({ ok: true });
   });
 
-  app.use("/api/session", sessionRouter);
+  app.use("/api/session", createSessionRouter({ timeZone }));
   app.use("/api/tickets", requireStaff, createTicketsRouter({ timeZone }));
   app.use("/api/lookup", createLookupRouter());
 

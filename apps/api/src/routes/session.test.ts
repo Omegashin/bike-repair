@@ -55,10 +55,12 @@ describe("staff session check (GET /api/session)", () => {
     expect(res.body).toEqual({ error: "Staff login required" });
   });
 
-  it("returns 200 with a valid session", async () => {
+  it("returns 200 and the shop's time zone with a valid session", async () => {
     const agent = await staffAgent(app);
     const res = await agent.get("/api/session");
     expect(res.status).toBe(200);
+    // The web app needs it to work out the shop's date (intake's earliest promised-by date).
+    expect(res.body).toEqual({ ok: true, timeZone: process.env.SHOP_TIME_ZONE });
   });
 
   it("returns 401 for a tampered cookie", async () => {
