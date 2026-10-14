@@ -1,5 +1,5 @@
 // The only place the web app calls fetch. One typed function per endpoint.
-import type { IntakeInput, Status } from "@bike-repair/shared";
+import type { IntakeInput, Status, StatusChangeInput } from "@bike-repair/shared";
 
 // One message per field, ready to show next to the input.
 export type FieldErrors = Record<string, string>;
@@ -126,4 +126,35 @@ export type Ticket = {
 
 export function createTicket(input: IntakeInput): Promise<Ticket> {
   return request("/tickets", { method: "POST", body: input, staff: true });
+}
+
+export type TicketEvent = {
+  // Null for the ticket's first event (created as Received).
+  from: Status | null;
+  to: Status;
+  // Internal only; never shown to the customer.
+  note: string | null;
+  createdAt: string;
+};
+
+export type TicketDetail = Ticket & {
+  overdue: boolean;
+  // The statuses this ticket may move to now (from status.ts, via the API).
+  nextStatuses: Status[];
+  // Oldest first.
+  history: TicketEvent[];
+};
+
+export function getTicket(number: string): Promise<TicketDetail> {
+  return request(`/tickets/${encodeURIComponent(number)}`, { staff: true });
+}
+
+// A 409 (move not allowed, or someone else changed the ticket first) throws an
+// ApiError with status 409.
+export function changeStatus(number: string, input: StatusChangeInput): Promise<TicketDetail> {
+  return request(`/tickets/${encodeURIComponent(number)}/status`, {
+    method: "POST",
+    body: input,
+    staff: true,
+  });
 }

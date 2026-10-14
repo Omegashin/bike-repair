@@ -17,3 +17,23 @@ export function formatCalendarDate(date: string): string {
   const [, year, month, day] = match.map(Number);
   return calendarDate.format(new Date(Date.UTC(year, month - 1, day)));
 }
+
+// A moment (e.g. a history event's createdAt) in the shop's time zone, e.g.
+// "Oct 14, 2026, 3:05 PM". Without a zone, falls back to the browser's.
+export function formatDateTime(iso: string, timeZone: string | undefined): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
+// Stored phones are digits only. North American numbers get the usual grouping;
+// anything else is shown as stored.
+export function formatPhone(digits: string): string {
+  const match = /^1?(\d{3})(\d{3})(\d{4})$/.exec(digits);
+  return match ? `(${match[1]}) ${match[2]}-${match[3]}` : digits;
+}
