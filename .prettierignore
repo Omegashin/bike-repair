@@ -1,3 +1,5 @@
 apps/api/src/generated
 apps/api/prisma/migrations
+e2e/test-results
+e2e/playwright-report
 package-lock.json

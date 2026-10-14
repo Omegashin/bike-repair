@@ -3,4 +3,5 @@
 **/src/generated
 .git
 .env
+e2e
 *.pdf

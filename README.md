@@ -34,6 +34,7 @@ npm run dev:web    # http://localhost:5173 (proxies /api to the API)
 
 ```sh
 npm run check      # typecheck, lint, formatting, unit and API tests (needs `npm run db:up`)
+npm run test:e2e   # Playwright, desktop and mobile (first time: npx playwright install chromium)
 ```
 
 ## Dependency notes
