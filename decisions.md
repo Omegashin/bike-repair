@@ -85,7 +85,7 @@ A TypeScript monorepo (npm workspaces): React frontend, REST API and PostgreSQL,
 | Database           | PostgreSQL + Prisma                                         | Customers, tickets and history are relational; Prisma gives typed queries and migrations      |
 | Tests              | Vitest + Supertest, Playwright                              | Fast unit tests for rules; real HTTP requests for the API; one browser test of the core path  |
 | Local dev          | Docker Compose                                              | One command runs Postgres and the app exactly as in production, with seed data                |
-| Hosting (optional) | **[WIP]** Render web service + Neon Postgres                | Free tiers; one service serves both API and frontend                                          |
+| Hosting (optional) | Render web service (Docker) + Render Postgres               | Free tiers; one service serves both API and frontend                                          |
 
 **Architecture:** the browser calls the REST API, which validates every request with Zod, applies the status rules, and uses PostgreSQL through Prisma. Staff endpoints require the shared staff login. The public lookup endpoint is limited to 10 attempts per client IP per 15 minutes. In production, Express serves both `/api` and the built React app from one URL, so there's one deploy and no CORS setup.
 
@@ -98,7 +98,7 @@ A TypeScript monorepo (npm workspaces): React frontend, REST API and PostgreSQL,
 - `401` for staff endpoints without a valid session.
 - `404` with the same body for a wrong ticket number or wrong phone digits, so lookups don't reveal which tickets exist.
 
-**Deployment [WIP: hosting not yet set up]:** Render runs `prisma migrate deploy` on each build; the environment-specific settings are the database URL, the shop's time zone, the staff password and session secret, and `TRUST_PROXY=1` so the lookup's rate limit sees each client's IP behind Render's proxy.
+**Deployment:** live at <https://bike-repair-ylfl.onrender.com/>. Render builds the same `Dockerfile` that `npm run start` uses; on each deploy the container runs `prisma migrate deploy` and the seed (which skips once tickets exist) before starting. The environment-specific settings are the database URL, the shop's time zone, the staff password and session secret, and `TRUST_PROXY=1` so the lookup's rate limit sees each client's IP behind Render's proxy.
 
 ## Testing approach
 
@@ -114,7 +114,7 @@ Tests target the places where a bug would cost the shop most:
 - **No cancelled status:** a declined repair has to be moved through to Picked up with a note.
 - **Single shop, single time zone:** overdue logic assumes one location.
 - **Customer data retention:** names and phones are kept indefinitely, with no deletion flow.
-- **Free-tier hosting [WIP]:** Render's free instance sleeps after 15 minutes idle, so the first request can take about a minute.
+- **Free-tier hosting:** Render's free instance sleeps after 15 minutes idle, so the first request can take about a minute. Render deletes free Postgres databases after 30 days, so the live demo needs a paid database to last longer.
 
 ## Next steps
 
